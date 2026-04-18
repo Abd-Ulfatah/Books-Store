@@ -1,136 +1,82 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import HangmanDrawing from './components/HangmanDrawing'
+import WordDisplay from './components/WordDisplay'
+import Keyboard from './components/Keyboard'
 
 function App() {
-  //Get Books Ti Local Storge : 
-  const [books, setBook] = useState(() => {
-    const saved = localStorage.getItem('books');
-    return saved ? JSON.parse(saved) : [];
-  })
+  // Variables : 
+  const [words, setWords] = useState([
+    "java",
+    "html",
+    "php",
+    "python",
+    "javascript",
+    "react"
+  ])
 
-  const [form, setForm] = useState({
-    id: null,
-    title: "",
-    auther: "",
-    price: "",
-    image: ""
-  })
+  const MAX_WRONG = 6
+  const [word, setWord] = useState("")
+  const [guessedLitters, setGuessedLitters] = useState([])
+  const [wronGuesses, setWronGuesses] = useState(0)
+  const [gameStatus, setGameStatus] = useState("playing")
 
-  const [isEditing, setIsEditing] = useState(false);
-
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // save to local Storge :
+  // First Run Befor Loaded Page  :
   useEffect(() => {
-    localStorage.setItem("books", JSON.stringify(books))
-  }, [books])
+    resetGame()
+  }, [])
 
-  //handleInputChange :
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+  // Functions :
+
+  // Reset Game :
+  const resetGame = () => {
+    const rnd = words[Math.floor(Math.random() * words.length)]
+    setWord(rnd)
+    setGuessedLitters([])
+    setWronGuesses(0)
+    setGameStatus("playing")
+
   }
-  //handleImage upload : 
-  const handleImage = (e) => {
-    const file = e.target.files[0];
-    if (!file) return
-    //limit size 2MB :
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Image is To Large Max 2MB")
-      return
+
+  // Handle Guess :
+
+  const handleGuess = (letter) => {
+    if (gameStatus !== "playing") return
+    if (guessedLitters.includes(letter)) return
+
+    setGuessedLitters((prev) => [...prev, letter])
+
+    if (!word.includes(letter)) {
+      setWronGuesses((wrong) => wrong + 1)
     }
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setForm({ ...form, image: reader.result })
-    }
-    reader.readAsDataURL(file)
+
   }
 
+  //won Or lose : 
+  useEffect(() => {
+    if (!word) return
+    const isWinner = word.split("").every((letter) => guessedLitters.includes(letter))
 
+    if (isWinner) setGameStatus("won")
 
-  //Add or Update Function : 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (isEditing) {
-      setBook(books.map((b) => b.id === form.id ? form : b))
-      setIsEditing(false)
-    } else {
-      setBook([...books, { ...form, id: Date.now() }])
-    }
-    resetForm()
-  }
+    if (wronGuesses >= MAX_WRONG) setGameStatus("lose")
 
-  const resetForm = () => {
-    setForm({
-      id: null,
-      title: "",
-      auther: "",
-      price: "",
-      image: ""
-    })
-  }
+  }, [guessedLitters, wronGuesses, word])
 
-  // Clear All Data : 
-  const clearAll = () => {
-    if (!window.confirm("Delete All Books ??")) return
-    localStorage.removeItem("books")
-    setBook([])
-  }
-
-  const handleEdit = (book) => {
-    setForm(book)
-    setIsEditing(true)
-  }
-
-  const handleDelete = (id) => {
-    setBook(books.filter((b) => b.id !== id))
-  }
-
-  const searchbBox = (e) => {
-    setSearchQuery(e.target.value)
-  }
-
-  const viewBooks = searchQuery ?
-    books.filter((book)=> book.title.toLowerCase().includes(searchQuery.toLocaleLowerCase()))
-    :books
 
   return (
     <>
-      <div className="container my-4">
-        <h2 className='text-center my-3'>📚Book Store</h2>
-        <div className="d-flex justify-content-between ">
-          <div style={{ width: "93%" }}><input type="text" className='form-control w-100' value={searchQuery} onChange={searchbBox} placeholder='Search by title' /> </div>
-          <button className='btn btn-outline-danger' onClick={clearAll} >Clear All</button>
+      <div className="container text-center mt-5">
+        <div className='d-flex justify-content-between'>
+          <h3>Status : {gameStatus}</h3>
+          <h3 className='text-danger'> Guesses : {MAX_WRONG}/{wronGuesses}</h3>
         </div>
-        <form onSubmit={handleSubmit} className='d-flex gap-1 mt-3' >
+        <h1>Hangman Game</h1>
 
-          <input type="text" className='form-control' name='title' value={form.title} placeholder='Book Title' onChange={handleChange} required />
-          <input type="text" className='form-control' name='auther' value={form.auther} placeholder='Book Auther' onChange={handleChange} required />
-          <input type="text" className='form-control' name='price' value={form.price} placeholder='Book Price' onChange={handleChange} required />
-          <input type="file" className='form-control' onChange={handleImage} />
-          <button className='btn btn-primary'> {isEditing ? "Update" : "Add"}</button>
-        </form>
-      </div>
-      <div className="row mx-5">
-        {viewBooks.length === 0 && <p className='text-center mt-5'>No Books Found ...</p>}
-        {
-          viewBooks.map((book) => (
-            <div key={book.id} className='col-sm-3 col-md-2 mt-4 ' >
-              <div className="card">
-                {book.image && <img src={book.image} className='card-img-top' height="150px" alt={book.title} />}
-                <div className="card-body">
-                  <h5>{book.title}</h5>
-                  <small>Auther : {book.auther}</small>
-                  <p>Price : {book.price}</p>
-
-                  <div className="d-flex justify-content-between">
-                    <button className='btn btn-dark' onClick={() => handleEdit(book)}>Edit</button>
-                    <button className='btn btn-danger' onClick={() => handleDelete(book.id)} >Delete</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        }
+        <HangmanDrawing wronGuesses={wronGuesses} gameStatus={gameStatus} />
+        <WordDisplay word={word} guessedLitters={guessedLitters} />
+        <Keyboard guessedLitters={guessedLitters} onGuess={handleGuess} disabled={gameStatus != "playing"} />
+        <button className='btn btn-danger mt-5' onClick={resetGame}>Reset Game</button>
       </div>
 
 
